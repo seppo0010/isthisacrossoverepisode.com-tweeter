@@ -51,6 +51,8 @@ const drawSequence = async (sequence) => {
   const ctx = canvas.getContext('2d')
   images.forEach((image, i) => {
     ctx.drawImage(image, 0, i * images[0].height, image.width, image.height)
+  });
+  images.forEach((image, i) => {
     // ugly copy paste from https://github.com/seppo0010/acrossoverepisode.com/blob/main/src/App.tsx#L147
     let size = 48
     const padding = 10
