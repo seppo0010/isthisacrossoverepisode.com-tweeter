@@ -3,6 +3,7 @@ import fetch from 'node-fetch';
 import striptags from 'striptags';
 import sharp from 'sharp';
 import { createCanvas, registerFont, loadImage as loadImageCanvas } from 'canvas';
+import { TwitterApi } from 'twitter-api-v2';
 
 const base_url = process.env.ASSETS_URL || 'https://acrossoverepisode-assets2.storage.googleapis.com';
 const asset_extension = process.env.ASSETS_EXTENSION || 'png';
@@ -85,11 +86,22 @@ const drawSequence = async (sequence) => {
   return canvas;
 }
 
+const tweetPhoto = async (sequence, picture) => {
+  const client = new TwitterApi({
+    appKey: process.env.TWITTER_API_KEY,
+    appSecret: process.env.TWITTER_API_SECRET,
+    accessToken: process.env.TWITTER_ACCESS_TOKEN,
+    accessSecret: process.env.TWITTER_ACCESS_TOKEN_SECRET,
+  });
+  const mediaId = await client.v1.uploadMedia(picture.toBuffer(), { mimeType: 'image/png' });
+  await client.v1.createMediaMetadata(mediaId, { alt_text: { text: sequence.map(({ text }) => text).join('\n') } });
+  await client.v2.tweet('', { media: { media_ids: [mediaId] } });
+};
+
 const tweetRandomSequence = async (index) => {
   const sequence = getRandomSequence(index);
   const picture = await drawSequence(sequence);
-  fs.writeFileSync('out.png', picture.toBuffer())
-  console.log({ picture });
+  tweetPhoto(sequence, picture);
 }
 
 (async() => {

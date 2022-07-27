@@ -21,6 +21,7 @@
     "canvas": "^2.9.3",
     "node-fetch": "^3.2.9",
     "sharp": "^0.30.7",
-    "striptags": "^3.2.0"
+    "striptags": "^3.2.0",
+    "twitter-api-v2": "^1.12.3"
   }
 }
