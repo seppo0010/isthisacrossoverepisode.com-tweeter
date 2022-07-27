@@ -1,43 +1,106 @@
 import * as fs from 'fs';
 import fetch from 'node-fetch';
-import striptags from 'striptags'
+import striptags from 'striptags';
+import sharp from 'sharp';
+import { createCanvas, registerFont, loadImage as loadImageCanvas } from 'canvas';
 
-const prepareFrame = ({ episode, html, season }) => {
+const base_url = process.env.ASSETS_URL || 'https://acrossoverepisode-assets2.storage.googleapis.com';
+const asset_extension = process.env.ASSETS_EXTENSION || 'png';
+
+const prepareFrame = (id, { episode, html, season }) => {
   return {
+    id,
     episode,
     season,
     text: striptags(html),
   }
 }
 
-const getRandomSequence = ({ storedFields }) => {
+const getRandomSequence = ({ documentIds, storedFields }) => {
   const sequence = [];
   const keys = Object.keys(storedFields);
   const key = keys[Math.floor(Math.random() * keys.length)];
-  const { episode, text, season } = prepareFrame(storedFields[key]);
+  const { id, episode, text, season } = prepareFrame(documentIds[key], storedFields[key]);
   const needPrevious = text[0].match(/[a-z]/) !== null;
   if (needPrevious && storedFields[key-1]) {
-    sequence.push(prepareFrame(storedFields[key-1]));
+    sequence.push(prepareFrame(documentIds[key-1], storedFields[key-1]));
   }
-  sequence.push({ episode, text, season })
+  sequence.push({ id, episode, text, season })
   const needNext = text[text.length-1].match(/[a-z,]/) !== null;
   if (needNext && storedFields[key+1]) {
-    sequence.push(prepareFrame(storedFields[key+1]));
+    sequence.push(prepareFrame(documentIds[key+1], storedFields[key+1]));
   }
 
   return sequence;
 }
 
-const tweetRandomSequence = ({ storedFields }) => {
-  const sequence = getRandomSequence({ storedFields });
-  console.log(sequence);
+const frameURL = ({ id, season, episode }) => `${base_url}/${season}x${('' + episode).padStart(2, '0')}/${id}_still.${asset_extension}`
+
+const loadImage = async (url) => {
+  const req = await fetch(url);
+  const data = Buffer.from(await req.arrayBuffer());
+  const img = await sharp(data).toFormat('png').toBuffer()
+  return loadImageCanvas(img);
+}
+
+const drawSequence = async (sequence) => {
+  const urls = sequence.map((frame) => frameURL(frame));
+  const images = await Promise.all(urls.map(loadImage));
+  const canvas = createCanvas(images[0].width, images[0].height * images.length)
+  const ctx = canvas.getContext('2d')
+  images.forEach((image, i) => {
+    ctx.drawImage(image, 0, i * images[0].height, image.width, image.height)
+    // ugly copy paste from https://github.com/seppo0010/acrossoverepisode.com/blob/main/src/App.tsx#L147
+    let size = 48
+    const padding = 10
+    ctx.font = size + 'px acrossoverepisode-font'
+    ctx.fillStyle = 'yellow'
+    ctx.textBaseline = 'top'
+    ctx.textAlign = 'center'
+    const caption = sequence[i].text;
+    const lines = caption.split('\n')
+    let height = size - 4
+    lines.forEach((line) => {
+      while (size > 10) {
+        const measure = ctx.measureText(line)
+        if (measure.width > image.width - 2 * padding) {
+          size--
+          ctx.font = size + 'px acrossoverepisode-font'
+        } else {
+          break
+        }
+        if (measure.actualBoundingBoxDescent < size) {
+          height = measure.actualBoundingBoxDescent
+        }
+      }
+    })
+    lines.reverse().forEach((line, j) => {
+      const x = image.width / 2
+      const y = image.height - height * (1 + j) - padding
+      ctx.lineWidth = 6
+      ctx.strokeText(line, x, y + i * images[0].height)
+      ctx.fillText(line, x, y + i * images[0].height)
+    })
+  });
+  return canvas;
+}
+
+const tweetRandomSequence = async (index) => {
+  const sequence = getRandomSequence(index);
+  const picture = await drawSequence(sequence);
+  fs.writeFileSync('out.png', picture.toBuffer())
+  console.log({ picture });
 }
 
 (async() => {
   if (!fs.existsSync('index.json')) {
-    const base_url = process.env.ASSETS_URL || 'https://acrossoverepisode-assets2.storage.googleapis.com';
     const req = await fetch(`${base_url}/index.json`);
     fs.writeFileSync('index.json', await req.text());
   }
+  if (!fs.existsSync('font.ttf')) {
+    const req = await fetch(`${base_url}/font.ttf`);
+    fs.writeFileSync('font.ttf', Buffer.from(await req.arrayBuffer()));
+  }
+  registerFont('font.ttf', { family: 'acrossoverepisode-font' })
   tweetRandomSequence(JSON.parse(fs.readFileSync('index.json')));
 })()

@@ -18,7 +18,9 @@
   },
   "homepage": "https://github.com/seppo0010/isthisacrossoverepisode.com-tweeter#readme",
   "dependencies": {
+    "canvas": "^2.9.3",
     "node-fetch": "^3.2.9",
+    "sharp": "^0.30.7",
     "striptags": "^3.2.0"
   }
 }
