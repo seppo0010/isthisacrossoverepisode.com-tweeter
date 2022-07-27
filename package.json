@@ -1,0 +1,24 @@
+{
+  "name": "isthisacrossoverepisode.com-tweeter",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/seppo0010/isthisacrossoverepisode.com-tweeter.git"
+  },
+  "author": "",
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/seppo0010/isthisacrossoverepisode.com-tweeter/issues"
+  },
+  "homepage": "https://github.com/seppo0010/isthisacrossoverepisode.com-tweeter#readme",
+  "dependencies": {
+    "node-fetch": "^3.2.9",
+    "striptags": "^3.2.0"
+  }
+}
