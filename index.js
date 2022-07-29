@@ -17,19 +17,36 @@ const prepareFrame = (id, { episode, html, season }) => {
   }
 }
 
+const loadFrame = ({ documentIds, storedFields }, season, episode, id, delta) => {
+  const reverseIndex = Object.fromEntries(Object.entries(documentIds || {}).map(([index, id]) => {
+    const f = storedFields[index];
+    return [`${f.season}:${f.episode}:${id}`, index];
+  }))
+  const currentFrame = `${season}:${episode}:${id}`
+  const key = (parseInt(reverseIndex[currentFrame], 10) + delta) + ''
+  return {
+    id: documentIds[key],
+    episode: storedFields[key].episode,
+    html: storedFields[key].html,
+    season: storedFields[key].season
+  }
+}
+
 const getRandomSequence = ({ documentIds, storedFields }) => {
   const sequence = [];
   const keys = Object.keys(storedFields);
   const key = keys[Math.floor(Math.random() * keys.length)];
   const { id, episode, text, season } = prepareFrame(documentIds[key], storedFields[key]);
   const needPrevious = text[0].match(/[a-z]/) !== null;
-  if (needPrevious && storedFields[key-1]) {
-    sequence.push(prepareFrame(documentIds[key-1], storedFields[key-1]));
+  if (needPrevious) {
+    const ep = loadFrame({ documentIds, storedFields }, season, episode, id, -1);
+    sequence.push(prepareFrame(ep.id, ep));
   }
   sequence.push({ id, episode, text, season })
   const needNext = text[text.length-1].match(/[a-z,]/) !== null;
-  if (needNext && storedFields[key+1]) {
-    sequence.push(prepareFrame(documentIds[key+1], storedFields[key+1]));
+  if (needNext) {
+    const ep = loadFrame({ documentIds, storedFields }, season, episode, id, 1);
+    sequence.push(prepareFrame(ep.id, ep));
   }
 
   return sequence;
